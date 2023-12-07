@@ -35,7 +35,7 @@ app.use("/test", async (req, res, next)=>{
     await MySQLClient.end();
   }
 
-  res.end("OK");
+  res.end("OKOKOK");
 });
 
 // Set application log
