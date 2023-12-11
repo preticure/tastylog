@@ -2,12 +2,12 @@
 <html lang="ja">
 <head>
   <%- include("../_share/metadata.ejs") %>
-  <title>Document</title>
+  <title>Search</title>
   <%- include("../_share/stylesheets.ejs") %>
   <link rel="stylesheet" href="/public/stylesheets/shop.css">
 </head>
 <body>
-  <div class="outerFrame">
+  <div class="outerframe">
     <%- include("../_share/navbar.ejs") %>
     <main role="main" class="container">
       <div class="border-bottom">
@@ -39,7 +39,7 @@
               .
               <% } %>
             <% } else { %>
-              <li class="page-item active"><span class="page-link disable"><%= i %></span></li>
+              <li class="page-item active"><span class="page-link disabled"><%= i %></span></li>
             <% } %>
           <% } %>
         </ul>
