@@ -1,14 +1,17 @@
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const appconfig = require("./config/application.config.js");
 const dbconfig = require("./config/mysql.config.js");
 const path = require("path");
 const logger = require("./lib/log/logger.js");
 const applicationlogger = require("./lib/log/applicationlogger.js");
 const accesslogger = require("./lib/log/accesslogger.js");
+const accesscontrol = require("./lib/security/accesscontrol.js");
 const express = require("express");
 const favicon = require("serve-favicon");
 const cookie = require("cookie-parser");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
+const flash = require("connect-flash");
 const app = express();
 
 // Express setting
@@ -39,12 +42,17 @@ app.use(session({
     password: dbconfig.PASSWORD,
     database: dbconfig.DATABASE
   }),
+  cookie: {
+    secure: IS_PRODUCTION
+  },
   secret: appconfig.security.SESSION_SECRET,
   resave: false,
   saveUninitialized: true,
   name: "sid"
 }));
 app.use(express.urlencoded({ extended: true }));
+app.use(flash());
+app.use(...accesscontrol.initialize());
 
 // Dynamic resource rooting
 app.use("/account", require("./routes/account.js"));
