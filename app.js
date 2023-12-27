@@ -12,6 +12,7 @@ const cookie = require("cookie-parser");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 const flash = require("connect-flash");
+const gracefulShutdown = require("http-graceful-shutdown");
 const app = express();
 
 // Express setting
@@ -47,7 +48,7 @@ app.use(session({
   },
   secret: appconfig.security.SESSION_SECRET,
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
   name: "sid"
 }));
 app.use(express.urlencoded({ extended: true }));
@@ -55,15 +56,55 @@ app.use(flash());
 app.use(...accesscontrol.initialize());
 
 // Dynamic resource rooting
-app.use("/account", require("./routes/account.js"));
-app.use("/search", require("./routes/search.js"));
-app.use("/shops", require("./routes/shops.js"));
-app.use("/", require("./routes/index.js"));
+app.use("/", (() => {
+  const router = express.Router();
+  router.use((req,res,next)=>{
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+    next();
+  });
+  router.use("/account", require("./routes/account.js"));
+  router.use("/search", require("./routes/search.js"));
+  router.use("/shops", require("./routes/shops.js"));
+  router.use("/test", (req, res) => { throw new Error ("test error"); });
+  router.use("/", require("./routes/index.js"));
+  return router;
+})());
 
 // Set application log
 app.use(applicationlogger());
 
+// Custom Error page
+app.use((req, res, next) => {
+  res.status(404);
+  res.render("./404.ejs");
+});
+app.use((err, req, res, next) => {
+  res.status(500);
+  res.render("./500.ejs");
+});
+
 // Execute web application
-app.listen(appconfig.PORT, () => {
+var server = app.listen(appconfig.PORT, () => {
   logger.application.info(`Application listening at :${appconfig.PORT}`);
+});
+
+// Graceful shutdown
+gracefulShutdown(server, {
+  signals: "SIGINT SIGTERM",
+  timeout: 10000,
+  onShutdown: () => {
+    return new Promise((resolve, reject) =>{
+      const { pool } = require("./lib/database/pool.js");
+      pool.end((err) => {
+        if(err){
+          return reject(err);
+        }
+        resolve();
+      });
+    });
+  },
+  finally: () =>{
+    const logger = require("./lib/log/logger.js").application;
+    logger.info("Application shutdown finished.");
+  }
 });
